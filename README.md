@@ -1,20 +1,22 @@
-# AI Accompaniment — Real-Time Musical Agent
+# Ghost Note — Real-Time Musical Agent
 
 > **Paper:** *Towards Real-Time Musical Agents: Instrumental Accompaniment with Latent Diffusion Models and MAX/MSP*
 > **Authors:** Tornike Karchkhadze, Shlomo Dubnov — University of California San Diego
 > **Demo page:** <https://consistency-separation.github.io/>
 > **arXiv:** *(link in the ML repo README)*
 
-This repository is the full AI Accompaniment workspace: the model-training and inference backend plus every first-party client currently used to drive it.
+This repository is the full Ghost Note workspace: the model-training and inference backend plus every first-party client currently used to drive it.
 
 If you are new here, you are getting four distinct ways to use the system today:
 
 - a browser app / web app for upload-and-run workflows
-- a JUCE client that builds as both a standalone desktop app and a VST3 plugin
+- a JUCE client called `CUE` that builds as both a standalone desktop app and a VST3 plugin
 - a Python reference client for protocol validation and smoke testing
 - the original MAX/MSP client, kept as a legacy compatibility path during the migration
 
-The project started as a MAX-first research system. It is now being reshaped into a multi-client stack where the browser app and the JUCE client are the primary user-facing paths, while MAX remains in the tree for compatibility, patch parity, and research continuity.
+The project started as a MAX-first research system. It is now being reshaped into Ghost Note: a multi-client stack where the browser app and the JUCE client are the primary user-facing paths, while MAX remains in the tree for compatibility, patch parity, and research continuity.
+
+For continuity with earlier commits, papers, and binary target names, some lower-level identifiers in this repository still use the legacy `AI Accompaniment` or `AiAccompaniment` naming.
 
 This workspace bundles the shared backend and those client surfaces:
 
@@ -24,7 +26,7 @@ This workspace bundles the shared backend and those client surfaces:
 | [musical-accompaniment-ldm/](musical-accompaniment-ldm/) | Python **backend** — trains and serves the Latent Diffusion Model (LDM) and its Consistency-Distilled (CD) counterpart | Python 3.10 (PyTorch / Lightning) |
 | [clients/python_ref/](clients/python_ref/) | **Reference Python client** — executable spec of [`PROTOCOL.md`](PROTOCOL.md); headless WAV→stems smoke test | Python (stdlib + numpy + soundfile) |
 | [clients/web_ui/](clients/web_ui/) | **Browser UI** — HTTP+WebSocket bridge over the reference client, with upload / transport / live event log | Python bridge + vanilla JS |
-| [clients/juce_plugin/](clients/juce_plugin/) | **VST3 + Standalone plugin** — 5-bus real-time plugin built on JUCE 8 | C++20 (JUCE) |
+| [clients/juce_plugin/](clients/juce_plugin/) | **CUE VST3 + Standalone plugin** — 5-bus real-time plugin built on JUCE 8 | C++20 (JUCE) |
 | [tests/playwright/](tests/playwright/) | **End-to-end tests** — drive the browser UI headfully via Playwright | Python (pytest + playwright) |
 
 All of those clients speak the same OSC protocol to the Python server. Historically that live loop ran only through MAX/MSP. In the current repo, the same backend can also be exercised through the browser app, the reference Python client, and the JUCE VST3 / standalone app.
@@ -56,7 +58,7 @@ All of those clients speak the same OSC protocol to the Python server. Historica
   <img src="musical-accompaniment-ldm/figures/Real_time_MAX.drawio.png" width="60%"/>
 </p>
 
-- **Client layer:** the legacy MAX external, the browser app / web app, the Python reference client, and the JUCE standalone / VST3 client all speak the same backend protocol.
+- **Client layer:** the legacy MAX external, the browser app / web app, the Python reference client, and the JUCE standalone / VST3 client `CUE` all speak the same backend protocol.
 - **Backend (Python server):** loads the trained model, receives context chunks over OSC, runs denoising (diffusion) or 1–2-step inference (consistency distillation), and returns the predicted stems.
 - **Transport:** OSC/UDP — client→Python on port **7000**, Python→client on port **8000**.
 
@@ -446,7 +448,7 @@ The UI is the **recommended path** for development — it exercises the whole st
 
 ### 9.3  JUCE plugin — [`clients/juce_plugin/`](clients/juce_plugin/)
 
-5-bus VST3 + Standalone (Bass / Drums / Guitar / Piano / Mix-dry) built on **JUCE 8.0.4**. Uses `juce::OSCSender` / `juce::OSCReceiver`, a lock-free mono context ring, and per-stem output FIFOs consumed from `processBlock`.
+5-bus VST3 + Standalone client `CUE` (`Collaborative Unscripted Ensemble`) built on **JUCE 8.0.4**. Uses `juce::OSCSender` / `juce::OSCReceiver`, a lock-free mono context ring, and per-stem output FIFOs consumed from `processBlock`.
 
 Build (Windows, VS 2022):
 
@@ -457,13 +459,13 @@ cd clients/juce_plugin
 git clone --depth 1 --branch 8.0.4 https://github.com/juce-framework/JUCE.git JUCE
 
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release --target AiAccompaniment_VST3 AiAccompaniment_Standalone
+cmake --build build --config Release --target CUE_VST3 CUE_Standalone
 ```
 
 Artefacts:
 
-- `build/AiAccompaniment_artefacts/Release/VST3/AI Accompaniment.vst3` — drop into `%CommonProgramFiles%\VST3`
-- `build/AiAccompaniment_artefacts/Release/Standalone/AI Accompaniment.exe`
+- `build/CUE_artefacts/Release/VST3/CUE.vst3` — drop into `%CommonProgramFiles%\VST3`
+- `build/CUE_artefacts/Release/Standalone/CUE.exe`
 
 Full DAW wiring & troubleshooting: [clients/juce_plugin/README.md](clients/juce_plugin/README.md).
 

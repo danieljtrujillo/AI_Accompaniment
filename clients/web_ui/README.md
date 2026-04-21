@@ -1,6 +1,6 @@
-# AI Accompaniment — Browser App / Web UI
+# Ghost Note — Browser App / Web UI
 
-This directory is the browser app / web app for AI Accompaniment.
+This directory is the browser app / web app for Ghost Note.
 
 If you want the simplest way to try the system without MAX/MSP or a DAW, start here. The web app is one of the primary migration targets for the project alongside the JUCE plugin client.
 

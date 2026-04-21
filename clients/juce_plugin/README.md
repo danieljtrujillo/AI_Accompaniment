@@ -1,6 +1,8 @@
-# AI Accompaniment — JUCE Standalone App + VST3 Plugin
+# Ghost Note — CUE Standalone App + VST3 Plugin
 
-This directory contains one of the two main post-MAX client surfaces for AI Accompaniment: a JUCE 8 client that builds as both a standalone desktop app and a VST3 plugin.
+This directory contains one of the two main post-MAX client surfaces for Ghost Note: CUE, a JUCE 8 client that builds as both a standalone app and a VST3 plugin.
+
+`CUE` stands for `Collaborative Unscripted Ensemble`.
 
 What you get here:
 
@@ -60,7 +62,7 @@ git clone --depth 1 --branch 8.0.4 https://github.com/juce-framework/JUCE.git JU
 
 # Configure + build (VS 2022)
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release --target AiAccompaniment_VST3 AiAccompaniment_Standalone
+cmake --build build --config Release --target CUE_VST3 CUE_Standalone
 ```
 
 > On a clean workspace the bundled CMake from VS 2022 Community works fine:
@@ -70,8 +72,8 @@ Artefacts produced:
 
 | Target | Path | Size |
 |---|---|---|
-| VST3 | `build/AiAccompaniment_artefacts/Release/VST3/AI Accompaniment.vst3` | ~5 MB |
-| Standalone | `build/AiAccompaniment_artefacts/Release/Standalone/AI Accompaniment.exe` | ~6 MB |
+| VST3 | `build/CUE_artefacts/Release/VST3/CUE.vst3` | ~5 MB |
+| Standalone | `build/CUE_artefacts/Release/Standalone/CUE.exe` | ~6 MB |
 
 Copy the VST3 to your host's plugin path, e.g. `%CommonProgramFiles%\VST3` on Windows.
 
@@ -83,7 +85,7 @@ Copy the VST3 to your host's plugin path, e.g. `%CommonProgramFiles%\VST3` on Wi
    .\.venv\Scripts\python.exe server_CD.py --serverport 7000 --clientport 8000 --server_ip 127.0.0.1
    ```
 2. In Reaper, make sure **Project rate** is 44.1 kHz (`Project → Settings → Sample rate`).
-3. Insert `AI Accompaniment` on a track carrying your live input.
+3. Insert `CUE` on a track carrying your live input.
 4. In the plugin UI, click **Connect** (defaults: server `127.0.0.1:7000`, listen `8000`), then **Load Model**.
 5. Route the plugin's extra output buses to new tracks (Reaper: right-click plugin → *Pin connections*).
 

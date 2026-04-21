@@ -1,4 +1,4 @@
-# Umbrella repo — AI_Accompaniment
+# Umbrella repo — Ghost Note
 
 # -- Python --
 __pycache__/
@@ -35,6 +35,7 @@ out/
 !tests/playwright/smoke_result.png
 !multi_track/media/**
 !figures/**
+!docs/images/web_ui/*.png
 
 # -- JUCE plugin build outputs --
 clients/juce_plugin/build/

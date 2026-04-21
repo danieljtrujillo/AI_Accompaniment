@@ -1,7 +1,7 @@
-# AI Accompaniment: Migration & Development Action Plan
+# Ghost Note: Migration & Development Action Plan
 
 ## 1. Current Identity
-AI Accompaniment is no longer a single MAX/MSP research demo wrapped around a Python model. In its current form, the repository contains one shared machine-learning backend and multiple user-facing clients built around the same OSC protocol.
+Ghost Note is no longer a single MAX/MSP research demo wrapped around a Python model. In its current form, the repository contains one shared machine-learning backend and multiple user-facing clients built around the same OSC protocol.
 
 <p align="center">
 	<img src="docs/images/web_ui/web-ui-overview.png" alt="Full browser UI state after a successful end-to-end run" width="100%" />

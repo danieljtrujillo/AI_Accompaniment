@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(AiAccompaniment VERSION 0.1.0 LANGUAGES CXX)
+project(CUE VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,13 +15,13 @@ endif()
 
 add_subdirectory(JUCE)
 
-juce_add_plugin(AiAccompaniment
-    COMPANY_NAME                "AI Accompaniment"
-    PLUGIN_MANUFACTURER_CODE    Aiax
-    PLUGIN_CODE                 Aiac
+juce_add_plugin(CUE
+    COMPANY_NAME                "Ghost Note"
+    PLUGIN_MANUFACTURER_CODE    GhNt
+    PLUGIN_CODE                 CuEn
     FORMATS                     VST3 Standalone
-    PRODUCT_NAME                "AI Accompaniment"
-    BUNDLE_ID                   com.ai-accompaniment.plugin
+    PRODUCT_NAME                "CUE"
+    BUNDLE_ID                   com.ghostnote.cue
     IS_SYNTH                    FALSE
     NEEDS_MIDI_INPUT            FALSE
     NEEDS_MIDI_OUTPUT           FALSE
@@ -30,15 +30,15 @@ juce_add_plugin(AiAccompaniment
     VST3_CATEGORIES             "Fx"
 )
 
-target_sources(AiAccompaniment PRIVATE
+target_sources(CUE PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/OscBridge.cpp
 )
 
-target_include_directories(AiAccompaniment PRIVATE Source)
+target_include_directories(CUE PRIVATE Source)
 
-target_compile_definitions(AiAccompaniment PRIVATE
+target_compile_definitions(CUE PRIVATE
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
@@ -46,7 +46,7 @@ target_compile_definitions(AiAccompaniment PRIVATE
     JUCE_REPORT_APP_USAGE=0
 )
 
-target_link_libraries(AiAccompaniment PRIVATE
+target_link_libraries(CUE PRIVATE
     juce::juce_audio_utils
     juce::juce_audio_processors
     juce::juce_audio_basics

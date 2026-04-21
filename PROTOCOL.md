@@ -1,4 +1,4 @@
-# OSC Wire Protocol — AI Accompaniment
+# OSC Wire Protocol — Ghost Note
 
 This document is the **authoritative specification** for the OSC/UDP protocol spoken between a client (e.g. the Max external, the web UI bridge, or the JUCE plugin) and the Python inference server ([`server.py`](musical-accompaniment-ldm/server.py) or [`server_CD.py`](musical-accompaniment-ldm/server_CD.py)).
 
