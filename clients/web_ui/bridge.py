@@ -71,6 +71,82 @@ log = logging.getLogger("bridge")
 
 
 # -----------------------------------------------------------------------------
+# Universal audio decode — for non-browser API callers.
+# The browser UI already normalizes to mono float32 @ 44.1 kHz; this is a
+# fallback for direct WebSocket callers that upload a container (WAV, FLAC,
+# OGG, MP3, ...) instead of raw float32 bytes.
+# -----------------------------------------------------------------------------
+
+_CONTAINER_MAGIC = (
+    b"RIFF",   # WAV
+    b"fLaC",   # FLAC
+    b"OggS",   # OGG / OPUS
+    b"ID3",    # MP3 with ID3 tag
+    b"\xff\xfb", b"\xff\xf3", b"\xff\xf2",  # MP3 frame syncs
+    b"\x1a\x45\xdf\xa3",  # Matroska / WebM
+)
+
+
+def _looks_like_container(raw: bytes) -> bool:
+    head = raw[:4]
+    if any(raw.startswith(m) for m in _CONTAINER_MAGIC):
+        return True
+    # ISO-BMFF (M4A/MP4/AAC): "....ftyp"
+    if len(raw) >= 12 and raw[4:8] == b"ftyp":
+        return True
+    return False
+
+
+def decode_audio_bytes(raw: bytes) -> np.ndarray:
+    """Return float32 mono @ 44100 Hz.
+
+    Accepts either raw float32 bytes (already mono @ 44.1 kHz, as the browser
+    UI sends) or any container readable by libsndfile (WAV/FLAC/OGG) — or MP3
+    via audioread if installed. Automatically downmixes and resamples.
+    """
+    if not _looks_like_container(raw):
+        return np.frombuffer(raw, dtype=np.float32).copy()
+
+    try:
+        import soundfile as sf  # type: ignore
+    except ImportError as e:
+        raise RuntimeError(
+            "received a compressed/container audio payload but 'soundfile' "
+            "is not installed on the bridge; install with `pip install soundfile`"
+        ) from e
+
+    try:
+        data, src_sr = sf.read(io.BytesIO(raw), dtype="float32", always_2d=True)
+    except Exception as e:
+        # Fallback chain: try audioread (mp3/m4a without ffmpeg-in-sf)
+        try:
+            import librosa  # type: ignore
+            data, src_sr = librosa.load(io.BytesIO(raw), sr=None, mono=False)
+            if data.ndim == 1:
+                data = data[np.newaxis, :]
+            data = data.T.astype(np.float32)
+        except Exception as e2:
+            raise RuntimeError(f"failed to decode audio: {e}; fallback: {e2}") from e
+
+    # Downmix to mono
+    mono = data.mean(axis=1).astype(np.float32)
+
+    # Resample to 44.1 kHz if needed
+    if src_sr != SR:
+        try:
+            import librosa  # type: ignore
+            mono = librosa.resample(mono, orig_sr=src_sr, target_sr=SR).astype(np.float32)
+        except ImportError:
+            # crude linear resample fallback (fine for low-stakes smoke use)
+            tgt_len = int(round(len(mono) * SR / src_sr))
+            x_src = np.linspace(0.0, 1.0, num=len(mono), endpoint=False, dtype=np.float64)
+            x_tgt = np.linspace(0.0, 1.0, num=tgt_len,  endpoint=False, dtype=np.float64)
+            mono = np.interp(x_tgt, x_src, mono).astype(np.float32)
+
+    return mono
+
+
+# -----------------------------------------------------------------------------
 # Session — one browser tab's view of the OSC server
 # -----------------------------------------------------------------------------
 
@@ -236,7 +312,11 @@ async def _dispatch(sess: Session, op: str, msg: dict) -> None:
         await asyncio.to_thread(sess.probe, int(msg.get("size", 1024)))
     elif op == "offline":
         raw_audio = base64.b64decode(msg["audio_b64"])
-        audio = np.frombuffer(raw_audio, dtype=np.float32).copy()
+        try:
+            audio = decode_audio_bytes(raw_audio)
+        except Exception as e:
+            await sess.emit("error", msg=str(e))
+            return
         await asyncio.to_thread(sess.offline, audio, int(msg.get("max_windows", 1)))
     else:
         await sess.emit("error", msg=f"unknown op: {op}")

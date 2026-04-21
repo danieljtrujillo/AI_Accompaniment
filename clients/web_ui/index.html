@@ -4,101 +4,292 @@
   <meta charset="utf-8" />
   <title>multi_track — Web UI</title>
   <style>
-    :root { color-scheme: dark; }
-    body { font: 14px/1.4 system-ui, sans-serif; margin: 0; padding: 16px;
-           background: #111; color: #eee; }
-    h1 { margin: 0 0 8px; font-size: 20px; }
-    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; align-items: center; }
-    .row label { min-width: 90px; color: #aaa; }
-    button { background: #2a2a2a; color: #eee; border: 1px solid #444;
-             padding: 6px 12px; cursor: pointer; border-radius: 4px; }
-    button:hover:not(:disabled) { background: #3a3a3a; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    input, select { background: #1a1a1a; color: #eee; border: 1px solid #333;
-                    padding: 4px 8px; border-radius: 3px; }
-    .status { display: inline-block; padding: 2px 8px; border-radius: 3px;
-              font-size: 12px; font-weight: 600; }
-    .status.off { background: #444; }
-    .status.on { background: #2a6; }
-    .status.warn { background: #c70; }
-    .status.err  { background: #c33; }
-    #log { background: #000; color: #0f9; padding: 8px; border-radius: 4px;
-           height: 320px; overflow: auto; font: 12px/1.3 monospace;
-           white-space: pre-wrap; }
-    .card { background: #1a1a1a; padding: 12px; border-radius: 6px;
-            margin-bottom: 12px; border: 1px solid #2a2a2a; }
-    a.dl { color: #6cf; text-decoration: none; margin-right: 12px; }
-    a.dl:hover { text-decoration: underline; }
-    #stems { margin-top: 6px; }
-    .tag { font-size: 11px; padding: 1px 6px; border-radius: 2px;
-           background: #333; margin-right: 4px; }
+    :root {
+      color-scheme: dark;
+      --bg: #0e1014;
+      --card: #171a21;
+      --card-border: #262b36;
+      --muted: #8a94a6;
+      --text: #e7ecf3;
+      --accent: #6cc4ff;
+      --ok: #34c46a;
+      --warn: #e6a23c;
+      --err:  #e55b5b;
+      --pill-off: #2c3240;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px; border-bottom: 1px solid var(--card-border);
+      background: linear-gradient(180deg, #181c25 0%, #0e1014 100%);
+      position: sticky; top: 0; z-index: 10;
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+    header h1 .sub { color: var(--muted); font-weight: 400; margin-left: 6px; }
+    .pills { display: flex; gap: 8px; }
+    .status {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.3px;
+      background: var(--pill-off); color: #cdd3e0;
+      text-transform: uppercase;
+    }
+    .status::before {
+      content: ""; display: block; width: 8px; height: 8px; border-radius: 50%;
+      background: #4a5163;
+    }
+    .status.on   { background: #193d26; color: #a6e7ba; }
+    .status.on::before   { background: var(--ok);   box-shadow: 0 0 6px var(--ok); }
+    .status.warn { background: #3d2f19; color: #ecc38a; }
+    .status.warn::before { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+    .status.err  { background: #3d1a1a; color: #f3a2a2; }
+    .status.err::before  { background: var(--err); }
+    .status.off::before  { background: #4a5163; }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+      gap: 16px;
+      padding: 16px 24px 32px;
+      max-width: 1600px; margin: 0 auto;
+    }
+    @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+
+    .col { display: flex; flex-direction: column; gap: 14px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      transition: border-color 120ms ease, opacity 120ms ease;
+    }
+    .card.dim { opacity: 0.55; }
+    .card-head { display: flex; align-items: center; gap: 10px; margin: -4px 0 12px; }
+    .step-no {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #2a3142; color: var(--accent);
+      font-size: 12px; font-weight: 700;
+    }
+    .card.done .step-no { background: #193d26; color: var(--ok); }
+    .card h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: 0.4px;
+               text-transform: uppercase; color: var(--muted); }
+    .card h2 .hint { font-weight: 400; text-transform: none; color: #5d6679;
+                     margin-left: 8px; font-size: 12px; letter-spacing: 0; }
+
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+    .row > label { color: var(--muted); font-size: 12px; min-width: 70px; }
+    .row.tight > label { min-width: auto; }
+    .grid-2 {
+      display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 8px 12px;
+      align-items: center;
+    }
+    .grid-2 label { color: var(--muted); font-size: 12px; text-align: right; }
+
+    button {
+      background: #232936; color: var(--text);
+      border: 1px solid #333b4c; border-radius: 6px;
+      padding: 7px 14px; cursor: pointer;
+      font: 13px/1 inherit; font-weight: 500;
+      transition: background 80ms ease, border-color 80ms ease, transform 60ms ease;
+    }
+    button:hover:not(:disabled) { background: #2b3344; border-color: #444d62; }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary { background: #1f3c55; border-color: #2b5f87; color: #dff0ff; }
+    button.primary:hover:not(:disabled) { background: #284c6a; border-color: #3a79ac; }
+
+    input, select {
+      background: #0d1017; color: var(--text);
+      border: 1px solid #2a3142; border-radius: 5px;
+      padding: 5px 8px; font: 13px/1 inherit;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    input[type=file] { font-size: 12px; }
+    input[type=checkbox] { accent-color: var(--accent); }
+
+    details summary {
+      cursor: pointer; color: var(--muted); font-size: 12px;
+      margin: 4px 0; user-select: none;
+    }
+    details summary:hover { color: var(--text); }
+    details[open] summary { color: var(--text); }
+
+    .tag {
+      display: inline-block; padding: 2px 8px;
+      background: #232936; color: #aab2c3;
+      border-radius: 4px; font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .tag.ok  { background: #193d26; color: #a6e7ba; }
+    .tag.err { background: #3d1a1a; color: #f3a2a2; }
+    .audio-info { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+
+    #log {
+      background: #060810; color: #9fd9a6;
+      padding: 10px 12px; border-radius: 6px;
+      height: 420px; overflow: auto;
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap; word-break: break-word;
+      border: 1px solid #0f1420;
+    }
+
+    .stems-empty { color: #565d6e; font-style: italic; font-size: 12px; padding: 16px 0; }
+    .stem-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 0; border-bottom: 1px dashed #242937;
+    }
+    .stem-row:last-child { border-bottom: none; }
+    .stem-name {
+      font-weight: 600; min-width: 70px;
+      color: var(--accent); text-transform: capitalize;
+    }
+    .stem-row audio { flex: 1; max-width: 360px; }
+    a.dl {
+      color: #8bd3ff; text-decoration: none;
+      font-size: 12px; padding: 4px 8px;
+      border: 1px solid #2b4e6a; border-radius: 4px;
+      background: #142230;
+    }
+    a.dl:hover { background: #1c2e42; }
+
+    footer { padding: 8px 24px 16px; color: #4a5163; font-size: 11px; text-align: center; }
   </style>
 </head>
 <body>
 
-<h1>multi_track — Web UI
-  <span id="ws-status" class="status off" data-testid="ws-status">ws: off</span>
-  <span id="osc-status" class="status off" data-testid="osc-status">osc: off</span>
-  <span id="model-status" class="status off" data-testid="model-status">model: off</span>
-</h1>
+<header>
+  <h1>multi_track <span class="sub">real-time accompaniment UI</span></h1>
+  <div class="pills">
+    <span id="ws-status"    class="status off" data-testid="ws-status">ws: off</span>
+    <span id="osc-status"   class="status off" data-testid="osc-status">osc: off</span>
+    <span id="model-status" class="status off" data-testid="model-status">model: off</span>
+  </div>
+</header>
 
-<div class="card">
-  <div class="row">
-    <label>bridge WS</label>
-    <input id="ws-url" value="ws://127.0.0.1:5174" size="30" />
-    <button id="btn-ws-connect" data-testid="btn-ws-connect">Connect bridge</button>
-  </div>
-  <div class="row">
-    <label>OSC server</label>
-    <input id="srv-host" value="127.0.0.1" size="14" />
-    <label>port</label>
-    <input id="srv-port" value="7000" size="5" />
-    <label>recv port</label>
-    <input id="recv-port" value="8000" size="5" />
-    <button id="btn-osc-connect" data-testid="btn-osc-connect" disabled>Connect OSC</button>
-  </div>
-  <div class="row">
-    <label>params</label>
-    r <input id="p-r" value="0.25" size="4" />
-    w <input id="p-w" value="1" size="2" />
-    fade <input id="p-fade" value="0.1" size="4" />
-    pkg <input id="p-pkg" value="5120" size="5" />
-    stems
-    <label><input type="checkbox" id="s-bass" checked /> bass</label>
-    <label><input type="checkbox" id="s-drums" checked /> drums</label>
-    <label><input type="checkbox" id="s-guitar" /> guitar</label>
-    <label><input type="checkbox" id="s-piano" /> piano</label>
-    <button id="btn-configure" data-testid="btn-configure" disabled>Configure</button>
-  </div>
-  <div class="row">
-    <button id="btn-load" data-testid="btn-load" disabled>Load model</button>
-    <button id="btn-reset" data-testid="btn-reset" disabled>Reset</button>
-    <button id="btn-probe" data-testid="btn-probe" disabled>Probe RTT</button>
-    <label><input type="checkbox" id="verbose" checked /> server verbose</label>
-    <button id="btn-verbose" data-testid="btn-verbose" disabled>Apply verbose</button>
-  </div>
-</div>
+<main>
+  <div class="col">
 
-<div class="card">
-  <div class="row">
-    <label>audio</label>
-    <input type="file" id="file" accept="audio/wav" data-testid="file-input" />
-    <button id="btn-load-test" data-testid="btn-load-test">Load bundled test_tone_8s.wav</button>
-    <span id="audio-info" class="tag">no audio loaded</span>
-  </div>
-  <div class="row">
-    <label>max windows</label>
-    <input id="max-windows" value="1" size="3" />
-    <button id="btn-offline" data-testid="btn-offline" disabled>Run offline</button>
-    <span id="progress" class="tag"></span>
-  </div>
-  <div id="stems" data-testid="stems-output"></div>
-</div>
+    <section class="card" id="card-connect">
+      <div class="card-head">
+        <span class="step-no">1</span>
+        <h2>Connection <span class="hint">bridge → server</span></h2>
+      </div>
+      <div class="grid-2">
+        <label>bridge ws</label>
+        <input id="ws-url" value="ws://127.0.0.1:5174" />
+        <label>server host</label>
+        <input id="srv-host" value="127.0.0.1" />
+        <label>osc send</label>
+        <input id="srv-port" value="7000" size="6" />
+        <label>osc recv</label>
+        <input id="recv-port" value="8000" size="6" />
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button id="btn-ws-connect"  class="primary" data-testid="btn-ws-connect">Connect bridge</button>
+        <button id="btn-osc-connect" class="primary" data-testid="btn-osc-connect" disabled>Connect OSC</button>
+      </div>
+    </section>
 
-<div class="card">
-  <h3 style="margin:0 0 8px;font-size:14px;">Event log</h3>
-  <div id="log" data-testid="log"></div>
-</div>
+    <section class="card dim" id="card-model">
+      <div class="card-head">
+        <span class="step-no">2</span>
+        <h2>Model <span class="hint">parameters · load · reset</span></h2>
+      </div>
+      <div class="grid-2">
+        <label>r</label>
+        <input id="p-r" value="0.25" />
+        <label>w</label>
+        <input id="p-w" value="1" />
+        <label>fade</label>
+        <input id="p-fade" value="0.1" />
+        <label>pkg size</label>
+        <input id="p-pkg" value="5120" />
+      </div>
+      <div class="row tight" style="margin-top:10px;">
+        <label style="min-width:70px;color:var(--muted);font-size:12px;">stems</label>
+        <label><input type="checkbox" id="s-bass"   checked /> bass</label>
+        <label><input type="checkbox" id="s-drums"  checked /> drums</label>
+        <label><input type="checkbox" id="s-guitar" /> guitar</label>
+        <label><input type="checkbox" id="s-piano"  /> piano</label>
+      </div>
+      <div class="row" style="margin-top:10px;">
+        <button id="btn-configure" class="primary" data-testid="btn-configure" disabled>Configure</button>
+        <button id="btn-load"      class="primary" data-testid="btn-load" disabled>Load model</button>
+      </div>
+      <details style="margin-top:10px;">
+        <summary>Advanced · probe · reset · verbose</summary>
+        <div class="row" style="margin-top:8px;">
+          <button id="btn-probe"   data-testid="btn-probe"   disabled>Probe RTT</button>
+          <button id="btn-reset"   data-testid="btn-reset"   disabled>Reset</button>
+          <label><input type="checkbox" id="verbose" checked /> server verbose</label>
+          <button id="btn-verbose" data-testid="btn-verbose" disabled>Apply</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="card dim" id="card-audio">
+      <div class="card-head">
+        <span class="step-no">3</span>
+        <h2>Audio <span class="hint">any codec · auto-converted to 44.1 kHz mono</span></h2>
+      </div>
+      <div class="row">
+        <input type="file" id="file"
+               accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.flac,.opus,.webm"
+               data-testid="file-input" />
+        <button id="btn-load-test" data-testid="btn-load-test">Load bundled test_tone_8s.wav</button>
+      </div>
+      <div class="audio-info">
+        <span id="audio-info" class="tag">no audio loaded</span>
+        <span id="audio-convert" class="tag" style="display:none;"></span>
+      </div>
+    </section>
+
+    <section class="card dim" id="card-run">
+      <div class="card-head">
+        <span class="step-no">4</span>
+        <h2>Run <span class="hint">sliding-window inference</span></h2>
+      </div>
+      <div class="row">
+        <label>max windows</label>
+        <input id="max-windows" value="1" size="4" />
+        <button id="btn-offline" class="primary" data-testid="btn-offline" disabled>Run offline</button>
+        <span id="progress" class="tag"></span>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="col">
+
+    <section class="card" id="card-results">
+      <div class="card-head">
+        <h2 style="color:var(--text);">Results</h2>
+      </div>
+      <div id="stems" data-testid="stems-output">
+        <div class="stems-empty">Generated stems will appear here after a run.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2 style="color:var(--text);">Event log</h2>
+      </div>
+      <div id="log" data-testid="log"></div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  Server-side <code>server_CD.py</code> · data at 44.1 kHz mono float32
+</footer>
 
 <script>
 (() => {
@@ -107,9 +298,9 @@
   const stemsEl = $("stems");
 
   let ws = null;
-  let audioBuf = null;       // Float32Array @44100 mono
+  let audioBuf = null;       // Float32Array @ 44100 Hz mono (ready to send)
+  const TARGET_SR = 44100;
 
-  // --- UI helpers ----------------------------------------------------------
   function log(s) {
     const ts = new Date().toISOString().slice(11, 23);
     logEl.textContent += `[${ts}] ${s}\n`;
@@ -123,6 +314,8 @@
   function setEnabled(ids, on) {
     for (const id of ids) $(id).disabled = !on;
   }
+  function undim(cardId) { $(cardId).classList.remove("dim"); }
+  function markDone(cardId) { $(cardId).classList.add("done"); }
 
   // --- WS connect ----------------------------------------------------------
   $("btn-ws-connect").onclick = () => {
@@ -154,6 +347,8 @@
           recv_port:   parseInt($("recv-port").value, 10)});
     setStatus("osc-status", "on", "osc: open");
     setEnabled(["btn-configure","btn-load","btn-reset","btn-probe","btn-verbose"], true);
+    markDone("card-connect");
+    undim("card-model");
   };
 
   $("btn-configure").onclick = () => {
@@ -168,70 +363,98 @@
           stems});
   };
   $("btn-load").onclick    = () => {
-    setStatus("model-status", "warn", "model: loading…");
+    setStatus("model-status", "warn", "model: loading");
     send({op: "load_model"});
   };
   $("btn-reset").onclick   = () => send({op: "reset"});
   $("btn-probe").onclick   = () => send({op: "probe", size: 1024});
   $("btn-verbose").onclick = () => send({op: "verbose", on: $("verbose").checked});
 
-  // --- audio load ----------------------------------------------------------
-  function wavToFloat32Mono(ab) {
-    const dv = new DataView(ab);
-    // Minimal WAV parser for PCM16/float32 mono or stereo
-    if (dv.getUint32(0, false) !== 0x52494646) throw new Error("not RIFF");
-    const riffSize = dv.getUint32(4, true);
-    if (dv.getUint32(8, false) !== 0x57415645) throw new Error("not WAVE");
-    let off = 12, fmt = null, dataOff = 0, dataLen = 0;
-    while (off < ab.byteLength - 8) {
-      const id = dv.getUint32(off, false);
-      const sz = dv.getUint32(off + 4, true);
-      if (id === 0x666d7420) { // 'fmt '
-        fmt = {
-          format: dv.getUint16(off + 8, true),
-          channels: dv.getUint16(off + 10, true),
-          sampleRate: dv.getUint32(off + 12, true),
-          bitsPerSample: dv.getUint16(off + 22, true),
-        };
-      } else if (id === 0x64617461) { // 'data'
-        dataOff = off + 8; dataLen = sz; break;
-      }
-      off += 8 + sz + (sz & 1);
+  // --- audio decoding (universal) -----------------------------------------
+  // Uses AudioContext.decodeAudioData so anything the browser can play
+  // (WAV / MP3 / M4A-AAC / OGG / FLAC / Opus / WebM) is accepted. Then
+  // downmixes to mono and resamples to 44.1 kHz via OfflineAudioContext.
+  async function normalizeToMono44k(arrayBuffer, fileName) {
+    const info    = $("audio-info");
+    const conv    = $("audio-convert");
+    conv.style.display = "none";
+
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const decodeCtx = new AC();
+    let decoded;
+    try {
+      decoded = await decodeCtx.decodeAudioData(arrayBuffer.slice(0));
+    } finally {
+      try { decodeCtx.close(); } catch {}
     }
-    if (!fmt || !dataOff) throw new Error("no fmt/data");
-    const ch = fmt.channels, bps = fmt.bitsPerSample;
-    const frames = dataLen / (ch * bps/8);
-    const out = new Float32Array(frames);
-    if (fmt.format === 1 && bps === 16) {
-      for (let i = 0; i < frames; i++) {
-        let s = 0;
-        for (let c = 0; c < ch; c++)
-          s += dv.getInt16(dataOff + (i*ch + c) * 2, true);
-        out[i] = s / (ch * 32768);
+    const srcSR  = decoded.sampleRate;
+    const srcCh  = decoded.numberOfChannels;
+    const srcLen = decoded.length;
+
+    let finalBuf;
+    const needConvert = (srcSR !== TARGET_SR) || (srcCh !== 1);
+
+    if (!needConvert) {
+      finalBuf = decoded.getChannelData(0).slice();
+    } else {
+      const targetLen = Math.ceil(srcLen * TARGET_SR / srcSR);
+      const offline = new OfflineAudioContext(1, targetLen, TARGET_SR);
+
+      // Build a mono source by averaging channels
+      let monoBuf;
+      if (srcCh === 1) {
+        monoBuf = decoded;
+      } else {
+        monoBuf = offline.createBuffer(1, srcLen, srcSR);
+        const dst = monoBuf.getChannelData(0);
+        for (let c = 0; c < srcCh; c++) {
+          const src = decoded.getChannelData(c);
+          for (let i = 0; i < srcLen; i++) dst[i] += src[i];
+        }
+        for (let i = 0; i < srcLen; i++) dst[i] /= srcCh;
       }
-    } else if (fmt.format === 3 && bps === 32) {
-      for (let i = 0; i < frames; i++) {
-        let s = 0;
-        for (let c = 0; c < ch; c++)
-          s += dv.getFloat32(dataOff + (i*ch + c) * 4, true);
-        out[i] = s / ch;
-      }
-    } else throw new Error(`unsupported format ${fmt.format} bps=${bps}`);
-    return {audio: out, sampleRate: fmt.sampleRate};
+
+      const node = offline.createBufferSource();
+      node.buffer = monoBuf;
+      node.connect(offline.destination);
+      node.start(0);
+      const rendered = await offline.startRendering();
+      finalBuf = rendered.getChannelData(0).slice();
+    }
+
+    const ext = (fileName.split(".").pop() || "?").toLowerCase();
+    info.textContent =
+      `${fileName}  ·  ${finalBuf.length} samples  ·  ${(finalBuf.length/TARGET_SR).toFixed(2)} s`;
+    info.className = "tag ok";
+
+    if (needConvert) {
+      conv.style.display = "";
+      conv.className = "tag";
+      conv.textContent =
+        `converted: ${ext} ${srcCh}ch ${srcSR} Hz → mono 44.1 kHz float32`;
+      log(`audio: ${fileName} (${ext}, ${srcCh}ch @ ${srcSR} Hz) → mono 44.1 kHz, ${finalBuf.length} samples`);
+    } else {
+      log(`audio: ${fileName} already mono 44.1 kHz, ${finalBuf.length} samples`);
+    }
+    return finalBuf;
   }
 
   async function acceptAudio(ab, name) {
+    $("audio-info").className = "tag";
+    $("audio-info").textContent = `decoding ${name}…`;
     try {
-      const {audio, sampleRate} = wavToFloat32Mono(ab);
-      audioBuf = audio;
-      $("audio-info").textContent =
-        `${name}: ${audio.length} samples  (${(audio.length/sampleRate).toFixed(2)} s @ ${sampleRate}Hz)`;
+      audioBuf = await normalizeToMono44k(ab, name);
       $("btn-offline").disabled = ws == null || ws.readyState !== 1;
-      log(`loaded ${name}: ${audio.length} samples @ ${sampleRate} Hz`);
-      if (sampleRate !== 44100)
-        log(`WARN: expected 44100 Hz, got ${sampleRate}`);
+      undim("card-audio");
+      markDone("card-audio");
+      undim("card-run");
+      // Preserve Playwright smoke-test log line:
+      log(`loaded ${name}`);
     } catch (e) {
-      log(`audio load error: ${e.message}`);
+      audioBuf = null;
+      $("audio-info").className = "tag err";
+      $("audio-info").textContent = `failed: ${e.message || e}`;
+      log(`audio load error: ${e.message || e}`);
     }
   }
 
@@ -250,8 +473,7 @@
   // --- offline run ---------------------------------------------------------
   $("btn-offline").onclick = () => {
     if (!audioBuf) { log("no audio loaded"); return; }
-    stemsEl.innerHTML = "";
-    // base64-encode raw float32 buffer
+    stemsEl.innerHTML = '<div class="stems-empty">Running… stems will appear as each window completes.</div>';
     const bytes = new Uint8Array(audioBuf.buffer, audioBuf.byteOffset, audioBuf.byteLength);
     let bin = "";
     const chunk = 0x8000;
@@ -265,15 +487,19 @@
     log("offline: sent audio, waiting…");
   };
 
-  // --- WS dispatch ---------------------------------------------------------
   function onMessage(m) {
     switch (m.ev) {
       case "log":
         log(m.msg);
+        if (typeof m.msg === "string" && m.msg.startsWith("configure: ")) {
+          markDone("card-model");
+        }
         break;
       case "ready":
         setStatus("model-status", "on", "model: ready");
         log("✓ /ready from server");
+        markDone("card-model");
+        undim("card-audio");
         break;
       case "probe":
         log(m.rtt_ms < 0 ? "probe: TIMEOUT" :
@@ -285,21 +511,31 @@
       case "done": {
         log("✓ offline run complete");
         stemsEl.innerHTML = "";
-        for (const [name, b64] of Object.entries(m.files || {})) {
-          const a = document.createElement("a");
-          a.className = "dl";
-          a.href = "data:audio/wav;base64," + b64;
-          a.download = name + ".wav";
-          a.textContent = "↓ " + name + ".wav";
-          a.dataset.testid = "dl-" + name;
-          stemsEl.appendChild(a);
+        const files = m.files || {};
+        const names = Object.keys(files);
+        if (!names.length) {
+          stemsEl.innerHTML = '<div class="stems-empty">Run finished but no stems were produced.</div>';
+        }
+        for (const name of names) {
+          const b64 = files[name];
+          const row = document.createElement("div");
+          row.className = "stem-row";
+          const nm = document.createElement("span");
+          nm.className = "stem-name"; nm.textContent = name;
           const au = document.createElement("audio");
           au.controls = true;
-          au.src = a.href;
-          au.style.verticalAlign = "middle";
+          au.src = "data:audio/wav;base64," + b64;
           au.dataset.testid = "audio-" + name;
-          stemsEl.appendChild(au);
-          stemsEl.appendChild(document.createElement("br"));
+          const a = document.createElement("a");
+          a.className = "dl";
+          a.href = au.src;
+          a.download = name + ".wav";
+          a.textContent = "↓ download";
+          a.dataset.testid = "dl-" + name;
+          row.appendChild(nm);
+          row.appendChild(au);
+          row.appendChild(a);
+          stemsEl.appendChild(row);
         }
         $("btn-offline").disabled = !audioBuf;
         $("progress").textContent = "done";

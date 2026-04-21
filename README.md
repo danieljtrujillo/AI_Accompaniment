@@ -5,7 +5,18 @@
 > **Demo page:** <https://consistency-separation.github.io/>
 > **arXiv:** *(link in the ML repo README)*
 
-This workspace bundles the **two halves of one system** plus three first-party clients:
+This repository is the full AI Accompaniment workspace: the model-training and inference backend plus every first-party client currently used to drive it.
+
+If you are new here, you are getting four distinct ways to use the system today:
+
+- a browser app / web app for upload-and-run workflows
+- a JUCE client that builds as both a standalone desktop app and a VST3 plugin
+- a Python reference client for protocol validation and smoke testing
+- the original MAX/MSP client, kept as a legacy compatibility path during the migration
+
+The project started as a MAX-first research system. It is now being reshaped into a multi-client stack where the browser app and the JUCE client are the primary user-facing paths, while MAX remains in the tree for compatibility, patch parity, and research continuity.
+
+This workspace bundles the shared backend and those client surfaces:
 
 | Folder | Role | Language |
 |---|---|---|
@@ -16,7 +27,7 @@ This workspace bundles the **two halves of one system** plus three first-party c
 | [clients/juce_plugin/](clients/juce_plugin/) | **VST3 + Standalone plugin** — 5-bus real-time plugin built on JUCE 8 | C++20 (JUCE) |
 | [tests/playwright/](tests/playwright/) | **End-to-end tests** — drive the browser UI headfully via Playwright | Python (pytest + playwright) |
 
-A human musician plays live in MAX/MSP; the external streams the mix to a remote GPU running the Python server over OSC; the server runs diffusion (or a distilled consistency model) and streams back generated accompaniment stems (**bass, drums, guitar, piano**) that are mixed into the live performance.
+All of those clients speak the same OSC protocol to the Python server. Historically that live loop ran only through MAX/MSP. In the current repo, the same backend can also be exercised through the browser app, the reference Python client, and the JUCE VST3 / standalone app.
 
 ---
 
@@ -45,9 +56,9 @@ A human musician plays live in MAX/MSP; the external streams the mix to a remote
   <img src="musical-accompaniment-ldm/figures/Real_time_MAX.drawio.png" width="60%"/>
 </p>
 
-- **Frontend (MAX/MSP + `multi_track` external):** handles the audio I/O, a multichannel `buffer~` holding one plane per stem, and all OSC traffic.
+- **Client layer:** the legacy MAX external, the browser app / web app, the Python reference client, and the JUCE standalone / VST3 client all speak the same backend protocol.
 - **Backend (Python server):** loads the trained model, receives context chunks over OSC, runs denoising (diffusion) or 1–2-step inference (consistency distillation), and returns the predicted stems.
-- **Transport:** OSC/UDP — Max→Python on port **7000**, Python→Max on port **8000**.
+- **Transport:** OSC/UDP — client→Python on port **7000**, Python→client on port **8000**.
 
 The system supports two backends that share the same wire protocol:
 
@@ -248,6 +259,17 @@ You have four ways to drive the server. All four speak the same OSC protocol (se
 
 Then open <http://127.0.0.1:5173/>. Click **Connect bridge → Connect OSC → Configure → Load model → Load bundled test_tone_8s.wav → Run offline**. Stems arrive as downloadable / playable WAVs. See [clients/web_ui/README.md](clients/web_ui/README.md).
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/web_ui/web-ui-connect.png" alt="Web UI connection controls" width="100%" /></td>
+    <td width="50%"><img src="docs/images/web_ui/web-ui-model-controls.png" alt="Web UI model controls" width="100%" /></td>
+  </tr>
+  <tr>
+    <td><sub><strong>Connection.</strong> Bridge WebSocket, OSC send port, and OSC receive port are configured directly in the first card.</sub></td>
+    <td><sub><strong>Model controls.</strong> Prediction parameters, stem selection, model load, probe, reset, and verbose toggles are all available before a run.</sub></td>
+  </tr>
+</table>
+
 #### 6.2.c  Reference Python client (headless smoke test)
 
 ```powershell
@@ -411,6 +433,17 @@ Two processes: the **bridge** ([`bridge.py`](clients/web_ui/bridge.py)) exposes 
 
 The UI is the **recommended path** for development — it exercises the whole stack with visible status pills for `ws/osc/model`, and every button is wired with `data-testid` hooks so Playwright can drive it headfully (see [§10](#10-testing--playwright-end-to-end)).
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/web_ui/web-ui-audio-run.png" alt="Web UI audio and run cards" width="100%" /></td>
+    <td width="50%"><img src="docs/images/web_ui/web-ui-results-log.png" alt="Web UI results and event log" width="100%" /></td>
+  </tr>
+  <tr>
+    <td><sub><strong>Audio ingest and run.</strong> The browser path accepts browser-decodable audio, shows the normalization result, and exposes the sliding-window run trigger in the same flow.</sub></td>
+    <td><sub><strong>Results and event log.</strong> Generated stems stay playable and downloadable in-place while the event log exposes the exact protocol and inference timeline.</sub></td>
+  </tr>
+</table>
+
 ### 9.3  JUCE plugin — [`clients/juce_plugin/`](clients/juce_plugin/)
 
 5-bus VST3 + Standalone (Bass / Drums / Guitar / Piano / Mix-dry) built on **JUCE 8.0.4**. Uses `juce::OSCSender` / `juce::OSCReceiver`, a lock-free mono context ring, and per-stem output FIFOs consumed from `processBlock`.
@@ -462,6 +495,12 @@ Start-Process .\musical-accompaniment-ldm\.venv\Scripts\python.exe -ArgumentList
 ```
 
 Expected runtime ≈ 20 s when the model is already loaded on the GPU, ≈ 40 s from a cold start. A screenshot of the last UI state is written to [tests/playwright/smoke_result.png](tests/playwright/smoke_result.png).
+
+<p align="center">
+  <img src="docs/images/web_ui/web-ui-overview.png" alt="Complete browser UI state after a passing Playwright run" width="100%" />
+  <br />
+  <sub><strong>Passing end-to-end state.</strong> The Playwright smoke flow finishes with live status pills, a loaded model, normalized audio, generated stems, and a populated event log in a single visible UI.</sub>
+</p>
 
 Override the default headful behaviour only in CI:
 

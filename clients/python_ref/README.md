@@ -1,6 +1,8 @@
 # Reference Python client
 
-A from-scratch, stdlib-only (+ `numpy`, `soundfile`) implementation of `PROTOCOL.md v1.0`. Doubles as:
+A from-scratch, stdlib-only (+ `numpy`, `soundfile`) implementation of the current `PROTOCOL.md` wire contract. This is the protocol-level companion to the browser app / web app and the JUCE client, not a separate product surface.
+
+It doubles as:
 
 - **Executable protocol spec** — if this works, the protocol doc is right.
 - **Smoke-test harness** — feed a WAV, get per-stem WAVs out, without Max, without a browser, without a DAW.

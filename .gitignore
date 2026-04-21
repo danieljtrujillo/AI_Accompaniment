@@ -62,3 +62,5 @@ test-results/
 # PDFs at workspace root are scratch (papers, notes), not repo content.
 # Exceptions can be un-ignored with `!path/to/keep.pdf`.
 /*.pdf
+!/README.pdf
+!/ACTION_PLAN.pdf

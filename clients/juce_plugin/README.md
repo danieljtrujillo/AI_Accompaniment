@@ -1,8 +1,18 @@
-# AI Accompaniment — JUCE VST3 Plugin
+# AI Accompaniment — JUCE Standalone App + VST3 Plugin
 
-Real-time generative accompaniment plugin. Captures a 6-second mono context window from the host, streams it via OSC to the [inference server](../../musical-accompaniment-ldm/server_CD.py), and plays back the four predicted stems (bass / drums / guitar / piano) on separate output buses.
+This directory contains one of the two main post-MAX client surfaces for AI Accompaniment: a JUCE 8 client that builds as both a standalone desktop app and a VST3 plugin.
 
-Matches the [OSC protocol v1.0](../../PROTOCOL.md) spoken by [`server_CD.py`](../../musical-accompaniment-ldm/server_CD.py).
+What you get here:
+
+- a standalone app for direct local testing without a DAW
+- a VST3 plugin for DAW-based use
+- a five-bus client that streams input context to the Python server and returns bass, drums, guitar, piano, and dry mix routing
+
+If you are evaluating what this repository is becoming, this is the plugin-native replacement path for the original MAX/MSP workflow. The MAX client still exists for compatibility, but JUCE is the forward path for host-integrated live use.
+
+The client captures a 6-second mono context window from the host, streams it via OSC to the [inference server](../../musical-accompaniment-ldm/server_CD.py), and plays back the four predicted stems on separate output buses.
+
+Matches the [OSC protocol v1.1](../../PROTOCOL.md) spoken by [`server_CD.py`](../../musical-accompaniment-ldm/server_CD.py).
 
 ---
 
