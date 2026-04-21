@@ -47,7 +47,7 @@ T_SAMPLES = 264_600          # 6.0 s context window
 STEM_NAMES = ("bass", "drums", "guitar", "piano")
 DEFAULT_PACKAGE_SIZE = 5120  # floats per UDP chunk
 DEFAULT_R = 0.25             # fraction of T to predict
-DEFAULT_W = 0.0              # -1 retrospective | 0 immediate | +1 lookahead
+DEFAULT_W = 0                # -1 retrospective | 0 immediate | +1 lookahead
 DEFAULT_FADE = 0.02          # crossfade fraction of SR
 
 

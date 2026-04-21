@@ -57,7 +57,7 @@ Every interactive element has a stable `data-testid` attribute:
 | `btn-connect-bridge` | Connect bridge button |
 | `btn-connect-osc` | Connect OSC button |
 | `btn-configure` | Configure button |
-| `btn-load-model` | Load model button |
+| `btn-load` | Load model button |
 | `btn-load-test` | Load bundled test tone |
 | `btn-offline` | Run offline button |
 | `btn-probe` | Probe RTT button |
