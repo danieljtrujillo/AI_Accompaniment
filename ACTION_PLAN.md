@@ -1,7 +1,7 @@
 # Ghost Note: Migration & Development Action Plan
 
-## 1. Current Identity
-Ghost Note is no longer a single MAX/MSP research demo wrapped around a Python model. In its current form, the repository contains one shared machine-learning backend and multiple user-facing clients built around the same OSC protocol.
+## 1. Current State
+Ghost Note currently consists of one shared machine-learning backend and multiple clients that drive it over a common OSC protocol. This differs from the original upstream project, which shipped as a single MAX/MSP research demo built directly on top of the Python model.
 
 <p align="center">
 	<img src="docs/images/web_ui/web-ui-overview.png" alt="Full browser UI state after a successful end-to-end run" width="100%" />

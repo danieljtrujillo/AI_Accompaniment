@@ -1,16 +1,16 @@
 # Ghost Note — Browser App / Web UI
 
-This directory is the browser app / web app for Ghost Note.
+## Overview
 
-If you want the simplest way to try the system without MAX/MSP or a DAW, start here. The web app is one of the primary migration targets for the project alongside the JUCE plugin client.
+This directory contains the browser client for Ghost Note. It is a Python bridge process and a single-page HTML front end that together expose the Ghost Note OSC protocol to a web browser, so a user can configure the inference server, upload or stream audio, and receive the predicted stems without installing MAX/MSP or a DAW.
 
 <p align="center">
   <img src="../../docs/images/web_ui/web-ui-header-status.png" alt="Web UI status pills for bridge, OSC, and model readiness" width="100%" />
   <br />
-  <sub><strong>Status at a glance.</strong> The header pills expose the three client milestones that matter operationally: WebSocket bridge connected, OSC transport connected, and model loaded.</sub>
+  <sub>The header pills expose the three client states the rest of the UI depends on: WebSocket bridge connected, OSC transport connected, and model loaded.</sub>
 </p>
 
-What you get here:
+The directory provides:
 
 - a no-build browser interface for configuring the server and running sliding-window accompaniment
 - a Python bridge that translates browser actions into the shared OSC protocol

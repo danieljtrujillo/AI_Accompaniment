@@ -1,35 +1,71 @@
 # Ghost Note — Real-Time Musical Agent
 
-> **Paper:** *Towards Real-Time Musical Agents: Instrumental Accompaniment with Latent Diffusion Models and MAX/MSP*
-> **Authors:** Tornike Karchkhadze, Shlomo Dubnov — University of California San Diego
-> **Demo page:** <https://consistency-separation.github.io/>
-> **arXiv:** *(link in the ML repo README)*
+## Overview
 
-This repository is the full Ghost Note workspace: the model-training and inference backend plus every first-party client currently used to drive it.
+Ghost Note is a system that listens to someone playing an instrument and generates the other instruments back, as separate audio tracks, while they keep playing. You feed it one part (for example, bass or guitar) and it returns drums, piano, and the remaining instruments as individual streams you can route into a DAW or play directly out of a standalone app.
 
-If you are new here, you are getting four distinct ways to use the system today:
+Internally it is a Python inference server that hosts a neural network trained to predict musical stems from a short rolling window of input audio. Clients connect to the server over a local UDP protocol, stream their live input into it, and play back the predicted stems.
 
-- a browser app / web app for upload-and-run workflows
-- a JUCE client called `CUE` that builds as both a standalone desktop app and a VST3 plugin
-- a Python reference client for protocol validation and smoke testing
-- the original MAX/MSP client, kept as a legacy compatibility path during the migration
+Ghost Note is not itself a research project. It is a product layer built on top of published research by other people (see [Based on](#based-on) below). Our contribution is the real-time runtime, the clients around it, the wire protocol, and the test and documentation infrastructure.
 
-The project started as a MAX-first research system. It is now being reshaped into Ghost Note: a multi-client stack where the browser app and the JUCE client are the primary user-facing paths, while MAX remains in the tree for compatibility, patch parity, and research continuity.
+## What Ghost Note changes, adds, and removes
 
-For continuity with earlier commits, papers, and binary target names, some lower-level identifiers in this repository still use the legacy `AI Accompaniment` or `AiAccompaniment` naming.
+Relative to the upstream research repository, this workspace does the following.
 
-This workspace bundles the shared backend and those client surfaces:
+**Added:** a browser-based web app ([clients/web_ui/](clients/web_ui/)) with an HTTP + WebSocket bridge that sits in front of the OSC protocol, so a user can upload or stream audio and receive stems without installing anything beyond the server.
+
+**Added:** `CUE`, a JUCE 8 client in [clients/juce_plugin/](clients/juce_plugin/) that builds as both a VST3 plugin and a standalone desktop app, with a 5-bus output layout (bass, drums, guitar, piano, dry mix) and a 44.1 kHz sample-rate guard.
+
+**Added:** a Python reference client ([clients/python_ref/](clients/python_ref/)) that implements the OSC protocol headlessly. It runs as a WAV-to-stems smoke test and as an executable specification for anyone writing a new client.
+
+**Added:** an end-to-end test suite ([tests/playwright/](tests/playwright/)) that drives the browser UI through a real model run against a live server, to catch regressions across the full stack.
+
+**Added:** a formal wire protocol document ([PROTOCOL.md](PROTOCOL.md)) so the server and any client can be implemented independently.
+
+**Added:** documentation PDFs and an export script ([scripts/render_docs_pdf.py](scripts/render_docs_pdf.py)) that keep the written docs in sync with screenshots of the UI.
+
+**Changed:** the Python backend now runs as a persistent OSC server suitable for real-time use, rather than as a research script. Those changes live on the `realtime-fixes` branch of the [musical-accompaniment-ldm](musical-accompaniment-ldm/) submodule.
+
+**Kept:** the original MAX/MSP external in [multi_track/](multi_track/) is still in the tree and still works against the current server. It is no longer the primary front end.
+
+**Not changed:** the model architecture, the training code, and the overall real-time approach. Those come from the upstream paper and repository and are used as-is.
+
+## Features and improvements
+
+- Two inference backends that share one wire protocol: a diffusion server ([musical-accompaniment-ldm/server.py](musical-accompaniment-ldm/server.py)) used as a quality reference, and a consistency-distilled server ([musical-accompaniment-ldm/server_CD.py](musical-accompaniment-ldm/server_CD.py)) used for real-time inference in 1 to 2 steps.
+- Four client surfaces against the same server: the browser app, the CUE JUCE standalone and VST3, the Python reference client, and the legacy MAX/MSP external.
+- OSC/UDP transport over fixed ports (client to server on 7000, server to client on 8000), documented in [PROTOCOL.md](PROTOCOL.md).
+- Lock-free mono context ring and per-stem output FIFOs in CUE, with a hard 44.1 kHz check in `prepareToPlay`.
+- End-to-end Playwright coverage of the browser path: connect, configure, load model, wait for `/ready`, probe, reset, upload, run one window, verify both stem downloads.
+- A shared `.vscode` config that points Pylance at the submodule venv so the rest of the workspace stays quiet while we work in our own code.
+
+## Based on
+
+The model, the training pipeline, and the real-time sliding-window approach used in this workspace come from the following work. Ghost Note wraps that work; it does not replace it.
+
+- Paper: *Towards Real-Time Musical Agents: Instrumental Accompaniment with Latent Diffusion Models and MAX/MSP*
+- Authors: Tornike Karchkhadze and Shlomo Dubnov, University of California San Diego
+- Demo page: <https://consistency-separation.github.io/>
+- arXiv: see the link in [musical-accompaniment-ldm/README.md](musical-accompaniment-ldm/README.md)
+- Upstream code (model + training + inference server): [musical-accompaniment-ldm/](musical-accompaniment-ldm/) (tracked here as a submodule on the `realtime-fixes` branch)
+- Legacy MAX/MSP client from the paper: [multi_track/](multi_track/) (tracked here as a submodule)
+
+Full attribution is in [Section 13 — Acknowledgments](#13-acknowledgments). The bibtex citation is in [Section 14 — Citation](#14-citation).
+
+Some lower-level identifiers (CMake targets, binary bundle IDs, older commit messages) still use the earlier `AI Accompaniment` / `AiAccompaniment` naming. Those are being migrated opportunistically; the user-facing product name is Ghost Note, and the user-facing JUCE client is CUE.
+
+### Workspace layout
 
 | Folder | Role | Language |
 |---|---|---|
-| [multi_track/](multi_track/) | MAX/MSP **frontend** — a Max external that captures live audio, sends it to the server, and writes the predicted stems back into a `buffer~` | C++ (Max SDK + oscpack) |
-| [musical-accompaniment-ldm/](musical-accompaniment-ldm/) | Python **backend** — trains and serves the Latent Diffusion Model (LDM) and its Consistency-Distilled (CD) counterpart | Python 3.10 (PyTorch / Lightning) |
-| [clients/python_ref/](clients/python_ref/) | **Reference Python client** — executable spec of [`PROTOCOL.md`](PROTOCOL.md); headless WAV→stems smoke test | Python (stdlib + numpy + soundfile) |
-| [clients/web_ui/](clients/web_ui/) | **Browser UI** — HTTP+WebSocket bridge over the reference client, with upload / transport / live event log | Python bridge + vanilla JS |
-| [clients/juce_plugin/](clients/juce_plugin/) | **CUE VST3 + Standalone plugin** — 5-bus real-time plugin built on JUCE 8 | C++20 (JUCE) |
-| [tests/playwright/](tests/playwright/) | **End-to-end tests** — drive the browser UI headfully via Playwright | Python (pytest + playwright) |
+| [multi_track/](multi_track/) | MAX/MSP client from the original paper. Captures live audio, sends it to the server, writes the predicted stems back into a `buffer~`. | C++ (Max SDK + oscpack) |
+| [musical-accompaniment-ldm/](musical-accompaniment-ldm/) | Python backend. Trains and runs the Latent Diffusion Model (LDM) and its Consistency-Distilled (CD) variant. | Python 3.10 (PyTorch / Lightning) |
+| [clients/python_ref/](clients/python_ref/) | Reference Python client. Executable spec of [PROTOCOL.md](PROTOCOL.md); headless WAV-to-stems smoke test. | Python (stdlib + numpy + soundfile) |
+| [clients/web_ui/](clients/web_ui/) | Browser UI. HTTP + WebSocket bridge over the reference client, plus a vanilla-JS front end for upload, transport, and a live event log. | Python bridge + vanilla JS |
+| [clients/juce_plugin/](clients/juce_plugin/) | CUE. 5-bus VST3 + Standalone built on JUCE 8. | C++20 (JUCE) |
+| [tests/playwright/](tests/playwright/) | End-to-end tests. Drive the browser UI headfully via Playwright. | Python (pytest + playwright) |
 
-All of those clients speak the same OSC protocol to the Python server. Historically that live loop ran only through MAX/MSP. In the current repo, the same backend can also be exercised through the browser app, the reference Python client, and the JUCE VST3 / standalone app.
+Every client in the table talks to the same Python server over the same OSC protocol.
 
 ---
 

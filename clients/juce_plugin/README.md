@@ -1,20 +1,18 @@
 # Ghost Note — CUE Standalone App + VST3 Plugin
 
-This directory contains one of the two main post-MAX client surfaces for Ghost Note: CUE, a JUCE 8 client that builds as both a standalone app and a VST3 plugin.
+## Overview
 
-`CUE` stands for `Collaborative Unscripted Ensemble`.
+This directory contains CUE, the JUCE 8 client for Ghost Note. `CUE` stands for `Collaborative Unscripted Ensemble`. It builds as a standalone desktop application and as a VST3 plugin from the same source tree.
 
-What you get here:
+CUE captures a 6-second mono context window from the host, streams it over OSC to the [inference server](../../musical-accompaniment-ldm/server_CD.py), and plays back the four predicted stems plus a dry mix on separate output buses. It implements the [OSC protocol v1.1](../../PROTOCOL.md) spoken by [`server_CD.py`](../../musical-accompaniment-ldm/server_CD.py).
 
-- a standalone app for direct local testing without a DAW
+CUE and the MAX/MSP external in [`multi_track/`](../../multi_track/) target different use cases: CUE is the DAW-integrated and standalone path, the MAX external is retained for compatibility with the original patch-based workflow from the paper.
+
+The directory provides:
+
+- a standalone application for local use without a DAW
 - a VST3 plugin for DAW-based use
-- a five-bus client that streams input context to the Python server and returns bass, drums, guitar, piano, and dry mix routing
-
-If you are evaluating what this repository is becoming, this is the plugin-native replacement path for the original MAX/MSP workflow. The MAX client still exists for compatibility, but JUCE is the forward path for host-integrated live use.
-
-The client captures a 6-second mono context window from the host, streams it via OSC to the [inference server](../../musical-accompaniment-ldm/server_CD.py), and plays back the four predicted stems on separate output buses.
-
-Matches the [OSC protocol v1.1](../../PROTOCOL.md) spoken by [`server_CD.py`](../../musical-accompaniment-ldm/server_CD.py).
+- a 5-bus output layout for bass, drums, guitar, piano, and a dry mix of the input
 
 ---
 
