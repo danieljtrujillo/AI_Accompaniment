@@ -1,0 +1,9 @@
+build/
+cmake-build-*/
+.vs/
+.vscode/
+out/
+# JUCE/ is tracked as a git submodule in this umbrella repo — do NOT ignore.
+*.vst3
+*.user
+CMakeUserPresets.json

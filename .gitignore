@@ -1,0 +1,64 @@
+# Umbrella repo — AI_Accompaniment
+
+# -- Python --
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.coverage
+.ipynb_checkpoints/
+
+# -- Node / web --
+node_modules/
+package-lock.json
+
+# -- Training / inference artefacts --
+lightning_logs/
+wandb/
+outputs/
+checkpoints/
+*.ckpt
+*.pth
+*.pt
+*.npy
+*.npz
+
+# -- Generated media --
+context_audio.wav
+generated_audio.wav
+out/
+*.png
+!tests/playwright/smoke_result.png
+!multi_track/media/**
+!figures/**
+
+# -- JUCE plugin build outputs --
+clients/juce_plugin/build/
+clients/juce_plugin/Builds/
+clients/juce_plugin/cmake-build-*/
+
+# -- OS / IDE --
+.DS_Store
+Thumbs.db
+.idea/
+
+# -- Playwright / pytest --
+playwright-report/
+test-results/
+
+# -- Editor scratch --
+*.swp
+*.swo
+.\#*
+\#*\#
+
+# -- Loose runtime logs / scratch --
+*.log
+*.err
+# PDFs at workspace root are scratch (papers, notes), not repo content.
+# Exceptions can be un-ignored with `!path/to/keep.pdf`.
+/*.pdf

@@ -1,0 +1,16 @@
+[submodule "musical-accompaniment-ldm"]
+	path = musical-accompaniment-ldm
+	url = https://github.com/danieljtrujillo/musical-accompaniment-ldm.git
+	# Fork of karchkha/musical-accompaniment-ldm. The `realtime-fixes` branch
+	# carries the v1.1 server fixes (double /ready, /reset clears batch state,
+	# predict() pred_len fix) plus Windows pip requirements.
+	branch = realtime-fixes
+[submodule "multi_track"]
+	path = multi_track
+	url = https://github.com/danieljtrujillo/multi_track.git
+	branch = master
+[submodule "clients/juce_plugin/JUCE"]
+	path = clients/juce_plugin/JUCE
+	url = https://github.com/juce-framework/JUCE.git
+	branch = 8.0.4
+	shallow = true

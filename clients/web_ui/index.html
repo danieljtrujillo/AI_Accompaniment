@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>multi_track — Web UI</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { font: 14px/1.4 system-ui, sans-serif; margin: 0; padding: 16px;
+           background: #111; color: #eee; }
+    h1 { margin: 0 0 8px; font-size: 20px; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; align-items: center; }
+    .row label { min-width: 90px; color: #aaa; }
+    button { background: #2a2a2a; color: #eee; border: 1px solid #444;
+             padding: 6px 12px; cursor: pointer; border-radius: 4px; }
+    button:hover:not(:disabled) { background: #3a3a3a; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    input, select { background: #1a1a1a; color: #eee; border: 1px solid #333;
+                    padding: 4px 8px; border-radius: 3px; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 3px;
+              font-size: 12px; font-weight: 600; }
+    .status.off { background: #444; }
+    .status.on { background: #2a6; }
+    .status.warn { background: #c70; }
+    .status.err  { background: #c33; }
+    #log { background: #000; color: #0f9; padding: 8px; border-radius: 4px;
+           height: 320px; overflow: auto; font: 12px/1.3 monospace;
+           white-space: pre-wrap; }
+    .card { background: #1a1a1a; padding: 12px; border-radius: 6px;
+            margin-bottom: 12px; border: 1px solid #2a2a2a; }
+    a.dl { color: #6cf; text-decoration: none; margin-right: 12px; }
+    a.dl:hover { text-decoration: underline; }
+    #stems { margin-top: 6px; }
+    .tag { font-size: 11px; padding: 1px 6px; border-radius: 2px;
+           background: #333; margin-right: 4px; }
+  </style>
+</head>
+<body>
+
+<h1>multi_track — Web UI
+  <span id="ws-status" class="status off" data-testid="ws-status">ws: off</span>
+  <span id="osc-status" class="status off" data-testid="osc-status">osc: off</span>
+  <span id="model-status" class="status off" data-testid="model-status">model: off</span>
+</h1>
+
+<div class="card">
+  <div class="row">
+    <label>bridge WS</label>
+    <input id="ws-url" value="ws://127.0.0.1:5174" size="30" />
+    <button id="btn-ws-connect" data-testid="btn-ws-connect">Connect bridge</button>
+  </div>
+  <div class="row">
+    <label>OSC server</label>
+    <input id="srv-host" value="127.0.0.1" size="14" />
+    <label>port</label>
+    <input id="srv-port" value="7000" size="5" />
+    <label>recv port</label>
+    <input id="recv-port" value="8000" size="5" />
+    <button id="btn-osc-connect" data-testid="btn-osc-connect" disabled>Connect OSC</button>
+  </div>
+  <div class="row">
+    <label>params</label>
+    r <input id="p-r" value="0.25" size="4" />
+    w <input id="p-w" value="1" size="2" />
+    fade <input id="p-fade" value="0.1" size="4" />
+    pkg <input id="p-pkg" value="5120" size="5" />
+    stems
+    <label><input type="checkbox" id="s-bass" checked /> bass</label>
+    <label><input type="checkbox" id="s-drums" checked /> drums</label>
+    <label><input type="checkbox" id="s-guitar" /> guitar</label>
+    <label><input type="checkbox" id="s-piano" /> piano</label>
+    <button id="btn-configure" data-testid="btn-configure" disabled>Configure</button>
+  </div>
+  <div class="row">
+    <button id="btn-load" data-testid="btn-load" disabled>Load model</button>
+    <button id="btn-reset" data-testid="btn-reset" disabled>Reset</button>
+    <button id="btn-probe" data-testid="btn-probe" disabled>Probe RTT</button>
+    <label><input type="checkbox" id="verbose" checked /> server verbose</label>
+    <button id="btn-verbose" data-testid="btn-verbose" disabled>Apply verbose</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="row">
+    <label>audio</label>
+    <input type="file" id="file" accept="audio/wav" data-testid="file-input" />
+    <button id="btn-load-test" data-testid="btn-load-test">Load bundled test_tone_8s.wav</button>
+    <span id="audio-info" class="tag">no audio loaded</span>
+  </div>
+  <div class="row">
+    <label>max windows</label>
+    <input id="max-windows" value="1" size="3" />
+    <button id="btn-offline" data-testid="btn-offline" disabled>Run offline</button>
+    <span id="progress" class="tag"></span>
+  </div>
+  <div id="stems" data-testid="stems-output"></div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 8px;font-size:14px;">Event log</h3>
+  <div id="log" data-testid="log"></div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const logEl = $("log");
+  const stemsEl = $("stems");
+
+  let ws = null;
+  let audioBuf = null;       // Float32Array @44100 mono
+
+  // --- UI helpers ----------------------------------------------------------
+  function log(s) {
+    const ts = new Date().toISOString().slice(11, 23);
+    logEl.textContent += `[${ts}] ${s}\n`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function setStatus(id, cls, text) {
+    const el = $(id);
+    el.className = "status " + cls;
+    el.textContent = text;
+  }
+  function setEnabled(ids, on) {
+    for (const id of ids) $(id).disabled = !on;
+  }
+
+  // --- WS connect ----------------------------------------------------------
+  $("btn-ws-connect").onclick = () => {
+    if (ws) { try { ws.close(); } catch {} }
+    const url = $("ws-url").value;
+    ws = new WebSocket(url);
+    ws.onopen = () => {
+      setStatus("ws-status", "on", "ws: open");
+      log("ws open");
+      setEnabled(["btn-osc-connect"], true);
+    };
+    ws.onclose = () => {
+      setStatus("ws-status", "off", "ws: off");
+      log("ws closed");
+      setEnabled(["btn-osc-connect","btn-configure","btn-load","btn-reset",
+                  "btn-probe","btn-verbose","btn-offline"], false);
+    };
+    ws.onerror = () => { setStatus("ws-status", "err", "ws: err"); };
+    ws.onmessage = (ev) => onMessage(JSON.parse(ev.data));
+  };
+
+  function send(obj) { ws.send(JSON.stringify(obj)); }
+
+  // --- OSC connect ---------------------------------------------------------
+  $("btn-osc-connect").onclick = () => {
+    send({op: "connect",
+          server_host: $("srv-host").value,
+          server_port: parseInt($("srv-port").value, 10),
+          recv_port:   parseInt($("recv-port").value, 10)});
+    setStatus("osc-status", "on", "osc: open");
+    setEnabled(["btn-configure","btn-load","btn-reset","btn-probe","btn-verbose"], true);
+  };
+
+  $("btn-configure").onclick = () => {
+    const stems = [];
+    for (const s of ["bass","drums","guitar","piano"])
+      if ($("s-"+s).checked) stems.push(s);
+    send({op: "configure",
+          r: parseFloat($("p-r").value),
+          w: parseInt($("p-w").value, 10),
+          fade: parseFloat($("p-fade").value),
+          package_size: parseInt($("p-pkg").value, 10),
+          stems});
+  };
+  $("btn-load").onclick    = () => {
+    setStatus("model-status", "warn", "model: loading…");
+    send({op: "load_model"});
+  };
+  $("btn-reset").onclick   = () => send({op: "reset"});
+  $("btn-probe").onclick   = () => send({op: "probe", size: 1024});
+  $("btn-verbose").onclick = () => send({op: "verbose", on: $("verbose").checked});
+
+  // --- audio load ----------------------------------------------------------
+  function wavToFloat32Mono(ab) {
+    const dv = new DataView(ab);
+    // Minimal WAV parser for PCM16/float32 mono or stereo
+    if (dv.getUint32(0, false) !== 0x52494646) throw new Error("not RIFF");
+    const riffSize = dv.getUint32(4, true);
+    if (dv.getUint32(8, false) !== 0x57415645) throw new Error("not WAVE");
+    let off = 12, fmt = null, dataOff = 0, dataLen = 0;
+    while (off < ab.byteLength - 8) {
+      const id = dv.getUint32(off, false);
+      const sz = dv.getUint32(off + 4, true);
+      if (id === 0x666d7420) { // 'fmt '
+        fmt = {
+          format: dv.getUint16(off + 8, true),
+          channels: dv.getUint16(off + 10, true),
+          sampleRate: dv.getUint32(off + 12, true),
+          bitsPerSample: dv.getUint16(off + 22, true),
+        };
+      } else if (id === 0x64617461) { // 'data'
+        dataOff = off + 8; dataLen = sz; break;
+      }
+      off += 8 + sz + (sz & 1);
+    }
+    if (!fmt || !dataOff) throw new Error("no fmt/data");
+    const ch = fmt.channels, bps = fmt.bitsPerSample;
+    const frames = dataLen / (ch * bps/8);
+    const out = new Float32Array(frames);
+    if (fmt.format === 1 && bps === 16) {
+      for (let i = 0; i < frames; i++) {
+        let s = 0;
+        for (let c = 0; c < ch; c++)
+          s += dv.getInt16(dataOff + (i*ch + c) * 2, true);
+        out[i] = s / (ch * 32768);
+      }
+    } else if (fmt.format === 3 && bps === 32) {
+      for (let i = 0; i < frames; i++) {
+        let s = 0;
+        for (let c = 0; c < ch; c++)
+          s += dv.getFloat32(dataOff + (i*ch + c) * 4, true);
+        out[i] = s / ch;
+      }
+    } else throw new Error(`unsupported format ${fmt.format} bps=${bps}`);
+    return {audio: out, sampleRate: fmt.sampleRate};
+  }
+
+  async function acceptAudio(ab, name) {
+    try {
+      const {audio, sampleRate} = wavToFloat32Mono(ab);
+      audioBuf = audio;
+      $("audio-info").textContent =
+        `${name}: ${audio.length} samples  (${(audio.length/sampleRate).toFixed(2)} s @ ${sampleRate}Hz)`;
+      $("btn-offline").disabled = ws == null || ws.readyState !== 1;
+      log(`loaded ${name}: ${audio.length} samples @ ${sampleRate} Hz`);
+      if (sampleRate !== 44100)
+        log(`WARN: expected 44100 Hz, got ${sampleRate}`);
+    } catch (e) {
+      log(`audio load error: ${e.message}`);
+    }
+  }
+
+  $("file").onchange = async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    await acceptAudio(await f.arrayBuffer(), f.name);
+  };
+
+  $("btn-load-test").onclick = async () => {
+    const r = await fetch("/test_tone_8s.wav");
+    if (!r.ok) { log("test_tone not found"); return; }
+    await acceptAudio(await r.arrayBuffer(), "test_tone_8s.wav");
+  };
+
+  // --- offline run ---------------------------------------------------------
+  $("btn-offline").onclick = () => {
+    if (!audioBuf) { log("no audio loaded"); return; }
+    stemsEl.innerHTML = "";
+    // base64-encode raw float32 buffer
+    const bytes = new Uint8Array(audioBuf.buffer, audioBuf.byteOffset, audioBuf.byteLength);
+    let bin = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk)
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    const b64 = btoa(bin);
+    send({op: "offline",
+          audio_b64: b64,
+          max_windows: parseInt($("max-windows").value, 10)});
+    $("btn-offline").disabled = true;
+    log("offline: sent audio, waiting…");
+  };
+
+  // --- WS dispatch ---------------------------------------------------------
+  function onMessage(m) {
+    switch (m.ev) {
+      case "log":
+        log(m.msg);
+        break;
+      case "ready":
+        setStatus("model-status", "on", "model: ready");
+        log("✓ /ready from server");
+        break;
+      case "probe":
+        log(m.rtt_ms < 0 ? "probe: TIMEOUT" :
+            `probe RTT ${m.rtt_ms.toFixed(2)} ms  (size=${m.size})`);
+        break;
+      case "window":
+        $("progress").textContent = `window ${m.index+1}/${m.total}`;
+        break;
+      case "done": {
+        log("✓ offline run complete");
+        stemsEl.innerHTML = "";
+        for (const [name, b64] of Object.entries(m.files || {})) {
+          const a = document.createElement("a");
+          a.className = "dl";
+          a.href = "data:audio/wav;base64," + b64;
+          a.download = name + ".wav";
+          a.textContent = "↓ " + name + ".wav";
+          a.dataset.testid = "dl-" + name;
+          stemsEl.appendChild(a);
+          const au = document.createElement("audio");
+          au.controls = true;
+          au.src = a.href;
+          au.style.verticalAlign = "middle";
+          au.dataset.testid = "audio-" + name;
+          stemsEl.appendChild(au);
+          stemsEl.appendChild(document.createElement("br"));
+        }
+        $("btn-offline").disabled = !audioBuf;
+        $("progress").textContent = "done";
+        break;
+      }
+      case "error":
+        log("ERROR: " + m.msg);
+        $("btn-offline").disabled = !audioBuf;
+        break;
+      default:
+        log("msg: " + JSON.stringify(m));
+    }
+  }
+})();
+</script>
+</body>
+</html>

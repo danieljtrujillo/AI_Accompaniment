@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/musical-accompaniment-ldm/.venv/Scripts/python.exe",
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/musical-accompaniment-ldm",
+        "${workspaceFolder}/musical-accompaniment-ldm/.venv/Lib/site-packages"
+    ]
+}
